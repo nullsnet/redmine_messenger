@@ -16,28 +16,48 @@ class Messenger
     { only_path: true, script_name: Redmine::Utils.relative_url_root }
   end
 
+  def self.set_slack_params(msg, channels, url, options)
+      params = {
+        text: msg,
+        link_names: 1
+      }
+    
+      username = Messenger.textfield_for_project(options[:project], :messenger_username)
+      params[:username] = username if username.present?
+      params[:attachments] = [options[:attachment]] if options[:attachment] && options[:attachment].any?
+
+      icon = Messenger.textfield_for_project(options[:project], :messenger_icon)
+      if icon.present?
+        if icon.start_with? ':'
+          params[:icon_emoji] = icon
+        else
+          params[:icon_url] = icon
+        end
+      end
+      return params
+  end
+
+  # TODO make discord param
+  def self.set_discord_params(msg, channels, url, options)
+    params = {
+      content: msg
+    }
+  end
+
   def self.speak(msg, channels, url, options)
     url ||= RedmineMessenger.settings[:messenger_url]
 
     return if url.blank?
-    return if channels.blank?
 
-    params = {
-      text: msg,
-      link_names: 1
-    }
-
-    username = Messenger.textfield_for_project(options[:project], :messenger_username)
-    params[:username] = username if username.present?
-    params[:attachments] = [options[:attachment]] if options[:attachment] && options[:attachment].any?
-
-    icon = Messenger.textfield_for_project(options[:project], :messenger_icon)
-    if icon.present?
-      if icon.start_with? ':'
-        params[:icon_emoji] = icon
-      else
-        params[:icon_url] = icon
-      end
+    case url
+    when /slack\.com/ then
+      return if channels.blank?
+      params = Messenger.set_slack_params(msg, channels, url, options)
+    when /discordapp\.com/ then
+      params = Messenger.set_discord_params(msg, channels, url, options)
+    else
+      Rails.logger.error("URL is wrong : #{url}")
+      return
     end
 
     channels.each do |channel|
@@ -48,7 +68,17 @@ class Messenger
 
       begin
         req = Net::HTTP::Post.new(uri)
-        req.set_form_data(payload: params.to_json)
+
+        case url
+        when /slack\.com/ then
+          req.set_form_data(payload: params.to_json)
+        when /discordapp\.com/ then
+          req.body = params.to_json
+        else
+          Rails.logger.error("URL is wrong : #{url}")
+          return
+        end
+
         Net::HTTP.start(uri.hostname, uri.port, http_options) do |http|
           response = http.request(req)
           Rails.logger.warn(response) unless [Net::HTTPSuccess, Net::HTTPRedirection, Net::HTTPOK].include? response
