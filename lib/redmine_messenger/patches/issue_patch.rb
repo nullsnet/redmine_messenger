@@ -44,7 +44,7 @@ module RedmineMessenger
           end
 
           Messenger.speak(l(:label_messenger_issue_created,
-                            project_url: "<#{Messenger.object_url project}|#{ERB::Util.html_escape(project)}>",
+                            project_url: Messenger.create_message_link(Messenger.object_url(project),ERB::Util.html_escape(project),url),
                             url: send_messenger_mention_url(project, description),
                             user: author),
                           channels, url, attachment: attachment, project: project)
@@ -86,7 +86,7 @@ module RedmineMessenger
           attachment[:fields] = fields if fields.any?
 
           Messenger.speak(l(:label_messenger_issue_updated,
-                            project_url: "<#{Messenger.object_url project}|#{ERB::Util.html_escape(project)}>",
+                            project_url: Messenger.create_message_link(Messenger.object_url(project),ERB::Util.html_escape(project),url),
                             url: send_messenger_mention_url(project, current_journal.notes),
                             user: current_journal.user),
                           channels, url, attachment: attachment, project: project)
@@ -100,7 +100,7 @@ module RedmineMessenger
              Messenger.textfield_for_project(project, :default_mentions).present?
             mention_to = Messenger.mentions(project, text)
           end
-          "<#{Messenger.object_url(self)}|#{ERB::Util.html_escape(self)}>#{mention_to}"
+          "#{Messenger.create_message_link(Messenger.object_url(self),ERB::Util.html_escape(self),Messenger.url_for_project(project))}#{mention_to}"
         end
       end
     end

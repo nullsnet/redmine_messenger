@@ -12,6 +12,15 @@ class Messenger
     ERB::Util.html_escape(text)
   end
 
+  def self.create_message_link(url, name, project_url)
+    case project_url
+    when /slack\.com/ then
+      return "<#{url}|#{name}>"
+    when /discordapp\.com/ then
+      return "[#{name}](#{url})"
+    end
+  end
+
   def self.default_url_options
     { only_path: true, script_name: Redmine::Utils.relative_url_root }
   end
