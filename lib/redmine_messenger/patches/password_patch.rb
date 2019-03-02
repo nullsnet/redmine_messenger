@@ -22,8 +22,8 @@ module RedmineMessenger
           return unless channels.present? && url
 
           Messenger.speak(l(:label_messenger_password_created,
-                            project_url: "<#{Messenger.object_url project}|#{ERB::Util.html_escape(project)}>",
-                            url: "<#{Messenger.object_url self}|#{name}>",
+                            project_url: Messenger.create_message_link(Messenger.object_url(project),ERB::Util.html_escape(project),url),
+                            url: Messenger.create_message_link(Messenger.object_url(self),name,url),
                             user: User.current),
                           channels, url, project: project)
         end
@@ -40,8 +40,8 @@ module RedmineMessenger
           return unless channels.present? && url
 
           Messenger.speak(l(:label_messenger_password_updated,
-                            project_url: "<#{Messenger.object_url project}|#{ERB::Util.html_escape(project)}>",
-                            url: "<#{Messenger.object_url self}|#{name}>",
+                            project_url: Messenger.create_message_link(Messenger.object_url(project),ERB::Util.html_escape(project),url),
+                            url: Messenger.create_message_link(Messenger.object_url(self),name,url),
                             user: User.current),
                           channels, url, project: project)
         end
