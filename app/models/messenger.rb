@@ -13,16 +13,15 @@ class Messenger
   end
 
   def self.create_message_link(url, name, project_url)
-    case project_url
-    when /slack\.com/ then
-      return "<#{url}|#{name}>"
-    when /discordapp\.com/ then
-      return "[#{name}](#{url})"
-    end
+    return project_url =~ /discordapp\.com/ ? "[#{name}](#{url})" : "<#{url}|#{name}>"
   end
 
   def self.default_url_options
     { only_path: true, script_name: Redmine::Utils.relative_url_root }
+  end
+
+  def self.set_params(msg, channels, url, options)
+    return url =~ /discordapp\.com/ ? Messenger.set_discord_params(msg, channels, url, options) : Messenger.set_slack_params(msg, channels, url, options)
   end
 
   def self.set_slack_params(msg, channels, url, options)
@@ -46,28 +45,29 @@ class Messenger
       return params
   end
 
-  # TODO make discord param
+  
   def self.set_discord_params(msg, channels, url, options)
+    # TODO make discord param
     params = {
       content: msg
     }
+
+    username = Messenger.textfield_for_project(options[:project], :messenger_username)
+    params[:username] = username if username.present?
+
+    icon = Messenger.textfield_for_project(options[:project], :messenger_icon)
+    params[:avatar_url] = icon if icon.present?
+    
+    return params
   end
 
   def self.speak(msg, channels, url, options)
     url ||= RedmineMessenger.settings[:messenger_url]
 
     return if url.blank?
+    return if channels.blank?
 
-    case url
-    when /slack\.com/ then
-      return if channels.blank?
-      params = Messenger.set_slack_params(msg, channels, url, options)
-    when /discordapp\.com/ then
-      params = Messenger.set_discord_params(msg, channels, url, options)
-    else
-      Rails.logger.error("URL is wrong : #{url}")
-      return
-    end
+    params = Messenger.set_params(msg, channels, url, options)
 
     channels.each do |channel|
       uri = URI(url)
@@ -83,9 +83,6 @@ class Messenger
           req.set_form_data(payload: params.to_json)
         when /discordapp\.com/ then
           req.body = params.to_json
-        else
-          Rails.logger.error("URL is wrong : #{url}")
-          return
         end
 
         Net::HTTP.start(uri.hostname, uri.port, http_options) do |http|
